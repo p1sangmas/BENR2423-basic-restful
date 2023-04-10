@@ -1,6 +1,7 @@
 const express = require('express')
 const app = express()
 const port = 3000
+const jwt = require('jsonwebtoken');
 
 let dbUsers = [
   {
@@ -24,7 +25,9 @@ let dbUsers = [
 app.use(express.json())
 
 // create a GET route
-app.get('/', (req, res) => {
+app.get('/hello', verifyToken, (req, res) => {
+  console.log(req.user)
+
   res.send('Hello World!')
 })
 
@@ -42,20 +45,23 @@ app.post('/', (req, res) => {
 // create a POST route for the user to login
 app.post('/login', (req, res) => {
 
-  // get the usernames and passwords from the request body
-  const {username, password} = req.body;
+  // // get the usernames and passwords from the request body
+  // const {username, password} = req.body;
 
-  // find the user in the database
-  const user = dbUsers.find(user => user.username === username && user.password === password);
+  // // find the user in the database
+  // const user = dbUsers.find(user => user.username === username && user.password === password);
 
-  // if user is found, return the user object
-  if (user) {
-    res.send(user);
-  } else {
+  // // if user is found, return the user object
+  // if (user) {
+  //   res.send(user);
+  // } else {
 
-    // if user is not found, return an error
-    res.send({ error: "User not found"});
-  }
+  //   // if user is not found, return an error
+  //   res.send({ error: "User not found"});
+  // }
+  let data = req.body 
+  let user = login(data.username, data.password, data.email)
+  res.send(generateToken(user))
 })
 
 // create a POST route for the user to register
@@ -105,4 +111,29 @@ function register (newusername, newpassword, newemail) {
       })
   }
   return "Registered successfully"
+}
+
+// to generate JWT token
+function generateToken (userProfile) {
+  return jwt.sign(
+    userProfile,
+   'my_super_secret_password', { expiresIn: 60 * 60 }); // 'my_super_secret_password' is the server password to protect the token
+
+}
+
+// to verify JWT token
+function verifyToken (req, res, next) {
+  let header = req.headers.authorization
+  console.log(header)
+
+  let token = header.split(' ')[1] // split bearer from the token
+
+  jwt.verify(token, 'my_super_secret_password', function(err, decoded) {
+    if(err) {
+      res.send("Invalid token. ")
+    }
+
+    req.user = decoded
+    next()
+  });
 }
